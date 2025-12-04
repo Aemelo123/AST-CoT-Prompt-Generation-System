@@ -1,7 +1,3 @@
-"""
-Tests for AST Security Parser
-"""
-
 from src.ast_parser import ASTSecurityParser, SecurityNode, SecurityRiskLevel
 
 
@@ -17,14 +13,13 @@ def hello_world():
     # Should parse without errors
     results = parser.parse(code)
 
-    # should be no security findings yet
+    # Safe code should have no security findings
     assert isinstance(results, list)
-    assert len(results) == 0  # No detection logic yet
+    assert len(results) == 0  # No dangerous patterns in this code
     print("PASS - Basic parsing works")
 
 
 def test_invalid_syntax():
-    """Test that parser handles syntax errors gracefully."""
     parser = ASTSecurityParser()
 
     code = """
@@ -68,8 +63,34 @@ z = 3
     print("PASS - Code snippet extraction works")
 
 
+def test_cwe94_code_injection():
+    # Test detection of CWE-94: Code Injection (eval, exec, compile).
+    parser = ASTSecurityParser()
+
+    code = """
+user_input = input("Enter code: ")
+result = eval(user_input)
+exec("print('hello')")
+compiled = compile(user_input, '<string>', 'exec')
+"""
+
+    results = parser.parse(code)
+
+    # Should detect 3 dangerous calls: eval, exec, compile
+    assert len(results) == 3, f"Expected 3 findings, got {len(results)}"
+
+    # All should be CWE-94
+    for node in results:
+        assert "CWE-94" in node.cwe_ids
+        assert node.risk_level == SecurityRiskLevel.HIGH
+        assert node.name in ("eval", "exec", "compile")
+
+    print("PASS - CWE-94 code injection detection works")
+
+
 if __name__ == "__main__":
     test_basic_parsing()
     test_invalid_syntax()
     test_code_snippet_extraction()
-    print("\nAll Commit 1 tests passed!")
+    test_cwe94_code_injection()
+    print("\nAll tests passed!")
