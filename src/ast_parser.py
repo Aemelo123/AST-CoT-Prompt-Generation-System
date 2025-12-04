@@ -27,6 +27,18 @@ class ASTSecurityParser:
     # CWE-94: Code Injection - dangerous functions that execute arbitrary code
     CODE_INJECTION_FUNCTIONS = {'eval', 'exec', 'compile'}
 
+    # CWE-78: OS Command Injection - functions that execute shell commands
+    COMMAND_INJECTION_FUNCTIONS = {'system', 'popen', 'call', 'run', 'Popen'}
+
+    # CWE-89: SQL Injection - database query functions
+    SQL_FUNCTIONS = {'execute', 'executemany'}
+
+    # CWE-502: Deserialization - unsafe deserialization functions
+    DESERIALIZATION_FUNCTIONS = {'loads', 'load'}
+
+    # CWE-22: Path Traversal - file operations that could access unintended paths
+    PATH_TRAVERSAL_FUNCTIONS = {'open', 'read', 'write'}
+
     def __init__(self):
         self.security_nodes: List[SecurityNode] = []
         self.source_lines: List[str] = []
@@ -63,6 +75,54 @@ class ASTSecurityParser:
                 risk_level=SecurityRiskLevel.HIGH,
                 cwe_ids=["CWE-94"],
                 security_concern=f"Code injection risk: {func_name}() executes arbitrary code",
+                code_snippet=self._get_code_snippet(node)
+            ))
+
+        # Check for CWE-78: OS Command Injection
+        elif func_name in self.COMMAND_INJECTION_FUNCTIONS:
+            self.security_nodes.append(SecurityNode(
+                node_type="Call",
+                name=func_name,
+                line_number=node.lineno,
+                risk_level=SecurityRiskLevel.HIGH,
+                cwe_ids=["CWE-78"],
+                security_concern=f"Command injection risk: {func_name}() executes shell commands",
+                code_snippet=self._get_code_snippet(node)
+            ))
+
+        # Check for CWE-89: SQL Injection
+        elif func_name in self.SQL_FUNCTIONS:
+            self.security_nodes.append(SecurityNode(
+                node_type="Call",
+                name=func_name,
+                line_number=node.lineno,
+                risk_level=SecurityRiskLevel.HIGH,
+                cwe_ids=["CWE-89"],
+                security_concern=f"SQL injection risk: {func_name}() may execute unsafe queries",
+                code_snippet=self._get_code_snippet(node)
+            ))
+
+        # Check for CWE-502: Deserialization
+        elif func_name in self.DESERIALIZATION_FUNCTIONS:
+            self.security_nodes.append(SecurityNode(
+                node_type="Call",
+                name=func_name,
+                line_number=node.lineno,
+                risk_level=SecurityRiskLevel.HIGH,
+                cwe_ids=["CWE-502"],
+                security_concern=f"Deserialization risk: {func_name}() may deserialize untrusted data",
+                code_snippet=self._get_code_snippet(node)
+            ))
+
+        # Check for CWE-22: Path Traversal
+        elif func_name in self.PATH_TRAVERSAL_FUNCTIONS:
+            self.security_nodes.append(SecurityNode(
+                node_type="Call",
+                name=func_name,
+                line_number=node.lineno,
+                risk_level=SecurityRiskLevel.MEDIUM,
+                cwe_ids=["CWE-22"],
+                security_concern=f"Path traversal risk: {func_name}() may access unintended files",
                 code_snippet=self._get_code_snippet(node)
             ))
 

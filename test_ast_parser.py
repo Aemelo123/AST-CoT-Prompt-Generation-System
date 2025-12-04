@@ -88,9 +88,87 @@ compiled = compile(user_input, '<string>', 'exec')
     print("PASS - CWE-94 code injection detection works")
 
 
+def test_cwe78_command_injection():
+    # Test detection of CWE-78: OS Command Injection
+    parser = ASTSecurityParser()
+
+    code = """
+import os
+import subprocess
+os.system("ls -la")
+subprocess.call(["ls", "-la"])
+subprocess.run("echo hello", shell=True)
+"""
+
+    results = parser.parse(code)
+    cwe78_results = [r for r in results if "CWE-78" in r.cwe_ids]
+
+    assert len(cwe78_results) == 3, f"Expected 3 CWE-78 findings, got {len(cwe78_results)}"
+    print("PASS - CWE-78 command injection detection works")
+
+
+def test_cwe89_sql_injection():
+    # Test detection of CWE-89: SQL Injection
+    parser = ASTSecurityParser()
+
+    code = """
+import sqlite3
+conn = sqlite3.connect('test.db')
+cursor = conn.cursor()
+cursor.execute("SELECT * FROM users WHERE id = " + user_id)
+cursor.executemany("INSERT INTO users VALUES (?)", data)
+"""
+
+    results = parser.parse(code)
+    cwe89_results = [r for r in results if "CWE-89" in r.cwe_ids]
+
+    assert len(cwe89_results) == 2, f"Expected 2 CWE-89 findings, got {len(cwe89_results)}"
+    print("PASS - CWE-89 SQL injection detection works")
+
+
+def test_cwe502_deserialization():
+    # Test detection of CWE-502: Deserialization of Untrusted Data
+    parser = ASTSecurityParser()
+
+    code = """
+import pickle
+import yaml
+data = pickle.loads(untrusted_data)
+config = yaml.load(open("config.yaml"))
+"""
+
+    results = parser.parse(code)
+    cwe502_results = [r for r in results if "CWE-502" in r.cwe_ids]
+
+    assert len(cwe502_results) == 2, f"Expected 2 CWE-502 findings, got {len(cwe502_results)}"
+    print("PASS - CWE-502 deserialization detection works")
+
+
+def test_cwe22_path_traversal():
+    # Test detection of CWE-22: Path Traversal
+    parser = ASTSecurityParser()
+
+    code = """
+user_file = input("Enter filename: ")
+f = open(user_file, "r")
+content = f.read()
+"""
+
+    results = parser.parse(code)
+    cwe22_results = [r for r in results if "CWE-22" in r.cwe_ids]
+
+    assert len(cwe22_results) == 2, f"Expected 2 CWE-22 findings, got {len(cwe22_results)}"
+    assert cwe22_results[0].risk_level == SecurityRiskLevel.MEDIUM
+    print("PASS - CWE-22 path traversal detection works")
+
+
 if __name__ == "__main__":
     test_basic_parsing()
     test_invalid_syntax()
     test_code_snippet_extraction()
     test_cwe94_code_injection()
+    test_cwe78_command_injection()
+    test_cwe89_sql_injection()
+    test_cwe502_deserialization()
+    test_cwe22_path_traversal()
     print("\nAll tests passed!")
