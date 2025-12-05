@@ -173,20 +173,44 @@ class PromptGenerator:
                 return self.SECURITY_RULES.get(cwe)
         return None
 
+    def _get_detected_rules(self, code: str) -> list:
+        """Get only the security rules relevant to detected dangerous calls in the code."""
+        detected_cwes = set()
+        try:
+            tree = ast.parse(code)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    func_name = self._get_call_name(node)
+                    warning = self._get_security_warning(func_name)
+                    if warning:
+                        # Find which CWE this warning belongs to
+                        for cwe_id, rule in self.SECURITY_RULES.items():
+                            if rule == warning:
+                                detected_cwes.add(cwe_id)
+                                break
+        except SyntaxError:
+            pass
+
+        # Return rules for detected CWEs only
+        return [(cwe_id, self.SECURITY_RULES[cwe_id]) for cwe_id in detected_cwes]
+
     def generate_baseline_prompt(self, code: str, task: str) -> str:
-        # Generate natural language prompt with same security rules (no AST)
+        # Generate natural language prompt with ONLY detected security rules (no AST)
         lines = []
         lines.append(f"Task: {task}")
         lines.append("")
-        lines.append("## Security Guidelines")
-        lines.append("")
 
-        # Same security rules, but in natural language without AST
-        for cwe_id, rule in self.SECURITY_RULES.items():
-            lines.append(f"- {rule['name']}: {rule['rule']}")
-            lines.append(f"  SAFE: {rule['safe']}")
-            lines.append(f"  UNSAFE: {rule['unsafe']}")
+        # Get only rules relevant to the code
+        detected_rules = self._get_detected_rules(code)
+
+        if detected_rules:
+            lines.append("## Security Guidelines")
             lines.append("")
+            for cwe_id, rule in detected_rules:
+                lines.append(f"- {rule['name']}: {rule['rule']}")
+                lines.append(f"  SAFE: {rule['safe']}")
+                lines.append(f"  UNSAFE: {rule['unsafe']}")
+                lines.append("")
 
         lines.append("## Instructions")
         lines.append("1. Review the security guidelines above")
