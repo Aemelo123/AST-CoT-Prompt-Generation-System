@@ -174,7 +174,6 @@ class PromptGenerator:
         return None
 
     def _get_detected_rules(self, code: str) -> list:
-        """Get only the security rules relevant to detected dangerous calls in the code."""
         detected_cwes = set()
         try:
             tree = ast.parse(code)
