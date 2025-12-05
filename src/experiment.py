@@ -12,11 +12,12 @@ from src.ast_parser import ASTSecurityParser
 class Experiment:
     # Runs the full experiment comparing AST-guided vs baseline prompts
 
-    def __init__(self):
-        self.pipeline = Pipeline()
+    def __init__(self, use_explicit_rules: bool = False):
+        self.pipeline = Pipeline(use_explicit_rules=use_explicit_rules)
         self.llm = LLMClient()
         self.parser = ASTSecurityParser()
         self.results = []
+        self.use_explicit_rules = use_explicit_rules
 
     def load_dataset(self, limit: int = None):
         # Load SecurityEval dataset from Hugging Face
@@ -49,9 +50,10 @@ class Experiment:
                     ast_vulns = self._count_vulnerabilities(ast_response)
                     ast_bandit = self._run_bandit(ast_response)
                     ast_semgrep = self._run_semgrep(ast_response)
+                    ast_loc = self._count_lines(ast_response)
                 except Exception as e:
                     ast_response = f"ERROR: {e}"
-                    ast_vulns, ast_bandit, ast_semgrep = -1, -1, -1
+                    ast_vulns, ast_bandit, ast_semgrep, ast_loc = -1, -1, -1, -1
 
                 # Generate code with baseline prompt
                 try:
@@ -59,9 +61,10 @@ class Experiment:
                     baseline_vulns = self._count_vulnerabilities(baseline_response)
                     baseline_bandit = self._run_bandit(baseline_response)
                     baseline_semgrep = self._run_semgrep(baseline_response)
+                    baseline_loc = self._count_lines(baseline_response)
                 except Exception as e:
                     baseline_response = f"ERROR: {e}"
-                    baseline_vulns, baseline_bandit, baseline_semgrep = -1, -1, -1
+                    baseline_vulns, baseline_bandit, baseline_semgrep, baseline_loc = -1, -1, -1, -1
 
                 # Store results
                 self.results.append({
@@ -70,9 +73,13 @@ class Experiment:
                     "model": model,
                     "prompt_type": "ast_guided",
                     "generated_code": ast_response,
+                    "lines_of_code": ast_loc,
                     "vuln_count_ast_parser": ast_vulns,
                     "vuln_count_bandit": ast_bandit,
-                    "vuln_count_semgrep": ast_semgrep
+                    "vuln_count_semgrep": ast_semgrep,
+                    "vuln_density_ast": ast_vulns / ast_loc if ast_loc > 0 else 0,
+                    "vuln_density_bandit": ast_bandit / ast_loc if ast_loc > 0 else 0,
+                    "vuln_density_semgrep": ast_semgrep / ast_loc if ast_loc > 0 else 0
                 })
 
                 self.results.append({
@@ -81,9 +88,13 @@ class Experiment:
                     "model": model,
                     "prompt_type": "baseline",
                     "generated_code": baseline_response,
+                    "lines_of_code": baseline_loc,
                     "vuln_count_ast_parser": baseline_vulns,
                     "vuln_count_bandit": baseline_bandit,
-                    "vuln_count_semgrep": baseline_semgrep
+                    "vuln_count_semgrep": baseline_semgrep,
+                    "vuln_density_ast": baseline_vulns / baseline_loc if baseline_loc > 0 else 0,
+                    "vuln_density_bandit": baseline_bandit / baseline_loc if baseline_loc > 0 else 0,
+                    "vuln_density_semgrep": baseline_semgrep / baseline_loc if baseline_loc > 0 else 0
                 })
 
         return self.results
@@ -105,6 +116,17 @@ class Experiment:
             return len(findings)
         except:
             return -1
+
+    def _count_lines(self, code: str) -> int:
+        # Count non-empty, non-comment lines of code
+        extracted = self._extract_code(code)
+        lines = extracted.split('\n')
+        count = 0
+        for line in lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith('#'):
+                count += 1
+        return count
 
     def _run_bandit(self, code: str) -> int:
         # Count vulnerabilities using Bandit

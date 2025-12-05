@@ -4,11 +4,10 @@ from src.experiment import Experiment
 def main():
     experiment = Experiment()
 
-    # Run experiment (limit=5 for testing, remove limit for full run)
-    experiment.run(limit=5, models=["claude", "gpt"])
+    experiment.run(models=["claude", "gpt"])
 
     # Export to CSV
-    df = experiment.export_csv("results/experiment_results.csv")
+    df = experiment.export_csv("results/experiment_results_run2_12042025.csv")
 
     # Print summary
     print("\n" + "="*50)
