@@ -1,7 +1,7 @@
 ---
 title: "AST-Guided Chain-of-Thought Prompting: Statistical Analysis"
 author: "Alberto Melo"
-date: "`r format(Sys.Date(), '%B %d, %Y')`"
+date: "December, 6, 2025"
 output:
   html_document:
     toc: true
@@ -117,13 +117,17 @@ cor_matrix <- cor(cor_vars, use = "complete.obs")
 
 # Overview
 
-This report presents the statistical analysis of the experiment comparing **AST-Guided Chain-of-Thought (CoT) prompting** versus **Baseline prompting** for secure code generation. The study examines vulnerability counts across two large language models (Claude and GPT) using three detection tools (AST Parser, Bandit, and Semgrep).
+In this report we describe the results of our statistical analysis comparing **AST-Guided Chain-of-Thought (CoT) Prompting** vs. **baseline prompting** to generate secure code. We examined the number of detected vulnerabilities for two large language models (Claude and GPT) using three different detection tools (AST Parser, Bandit and Semgrep).
 
 **Research Design:** 2 × 2 Factorial Design
 
-- **Independent Variable 1:** Model (Claude vs. GPT)
-- **Independent Variable 2:** Prompt Type (Baseline vs. AST-Guided)
-- **Dependent Variables:** Vulnerability count, Vulnerability density (per KLOC)
+- **First Independent Variable:** Model (GPT vs Claude)
+
+- **Second Independent Variable:** Prompt type (AST-guided CoT vs Baseline CoT)
+
+- **First Dependent Variable:** Number of vulnerabilities found
+
+- **Second Dependent Variable:** Density of vulnerabilities per KLOC.
 
 ```{r sample-sizes}
 knitr::kable(table(data$model, data$prompt_type), 
@@ -151,9 +155,9 @@ knitr::kable(overall_stats, caption = "Overall Descriptive Statistics")
 
 ## Distribution of Vulnerability Counts
 
-The histogram below shows the distribution of vulnerability counts across all samples.
+Below is the histogram showing the number of vulnerabilities in each sample.
 
-```{r fig-distribution, fig.cap="Distribution of vulnerability counts across all samples. The majority of samples contain zero vulnerabilities, with a right-skewed tail."}
+```{r fig-distribution, fig.cap="The majority of samples have no vulnerabilities, while the right skewness of the tail indicates that most samples have no vulnerabilities, however there is some variability in this regard."}
 par(mfrow = c(1, 2), mar = c(5, 5, 4, 2))
 
 vuln_min <- floor(min(data$total_vuln, na.rm = TRUE)) - 0.5
@@ -186,9 +190,10 @@ par(mfrow = c(1, 1))
 
 ## By Condition
 
-The boxplots below show the distribution of vulnerability counts across all four experimental conditions. Red diamonds indicate group means.
+Box plots are shown to demonstrate the distribution of vulnerability counts for each condition in our experiments. Group mean values were identified using red diamonds on the box plots.
 
-```{r fig-boxplot, fig.cap="Vulnerability count distributions by model and prompt type. Claude shows a notable reduction (18%) with AST-Guided prompting."}
+
+```{r fig-boxplot, fig.cap="Claude showed an obvious drop in vulnerability (an 18% drop) when it was prompted by AST-Guided prompts."}
 par(mar = c(5, 5, 4, 2))
 
 boxplot(total_vuln ~ prompt_type + model, data = data,
@@ -220,9 +225,9 @@ condition_stats <- data.frame(
 knitr::kable(condition_stats, caption = "Descriptive Statistics by Condition")
 ```
 
-The bar chart below provides a clearer comparison of mean vulnerability counts with standard error bars.
+The bar chart shows the mean count of vulnerabilities for each condition compared to the standard errors. 
 
-```{r fig-bars, fig.cap="Mean vulnerability counts by condition with standard error bars. Error bars represent ±1 SE. Claude shows 18% reduction while GPT shows slight increase."}
+```{r fig-bars, fig.cap="Claude has an 18% reduction in number of vulnerabilities than GPT shows a slight increase."}
 par(mar = c(5, 5, 4, 2))
 
 bar_data <- matrix(c(claude_base_mean, claude_ast_mean, gpt_base_mean, gpt_ast_mean), 
@@ -244,9 +249,9 @@ text(bp, means_vec + ses + 0.08, labels = round(means_vec, 2), cex = 0.9)
 
 ## Vulnerabilities by Detection Tool
 
-Three static analysis tools were used to detect vulnerabilities: a custom AST Parser, Bandit, and Semgrep.
+Three static analysis tools were employed in order to identify vulnerabilities: an ast parser, bandit, and semgrep.
 
-```{r fig-tools, fig.cap="Total vulnerabilities detected by each tool across prompt conditions."}
+```{r fig-tools, fig.cap="The total number of vulnerabilities identified by each tool for each condition in which a prompt was applied."}
 par(mar = c(5, 5, 4, 2))
 
 tool_baseline <- c(
@@ -294,11 +299,11 @@ knitr::kable(tool_stats, caption = "Vulnerability Counts by Detection Tool",
 
 # Prerequisite: Assumption Testing
 
-Before conducting parametric tests, we must verify that the data meets the required assumptions.
+Prior to performing any parametric tests it is imperative to check if the data conforms with all of the necessary assumptions for those tests.
 
 ## Normality Testing (Shapiro-Wilk)
 
-The Shapiro-Wilk test evaluates whether the data follows a normal distribution.
+The shapiro-wilk test assesses the extent to which the data exhibits normality (i.e., does the data follow a normal distribution).
 
 - **H₀:** Data is normally distributed
 - **H₁:** Data is NOT normally distributed
@@ -330,11 +335,11 @@ normality_results <- data.frame(
 knitr::kable(normality_results, caption = "Shapiro-Wilk Normality Test Results")
 ```
 
-**Interpretation:** All conditions violate the normality assumption (p < .05). This is expected given the floor effect visible in the distribution. Non-parametric tests will be conducted alongside parametric tests for robustness.
+**Interpretation:** Given that all of the assumptions violated the normality assumption (p < .05) this was to be expected due to a floor effect in the data; therefore nonparametric testing will be performed along with parametric testing as well for sensitivity analysis.
 
 ## Homogeneity of Variance (Levene's Test)
 
-Levene's test evaluates whether variances are equal across groups.
+The Levene’s test determines if there is an equality of variance between different groupings.
 
 - **H₀:** Variances are equal across groups
 - **H₁:** Variances are NOT equal across groups
@@ -347,21 +352,23 @@ cat(paste0("F(", levene_result$df1, ", ", levene_result$df2, ") = ",
            round(levene_result$F_value, 4), ", p = ", round(levene_result$p_value, 4)))
 ```
 
-**Interpretation:** Levene's test result indicates whether variances are homogeneous across groups.
+**Interpretation:** The results from the Levene’s Test indicate if variance in the vulnerability count is equal or unequal across the different model types/prompt types.
 
 ---
 
 # Analysis 1: Two-Way Factorial ANOVA
 
-**Research Question:** Do Model type and Prompt type significantly affect vulnerability count, and is there an interaction effect?
+**Research Question:** Are Model Type and Prompt Type statistically significant for a difference in vulnerability counts? Is there a statistically significant interaction effect between Model Type and Prompt Type on a vulnerability count?
 
-**Design:** 2 (Model: Claude vs. GPT) × 2 (Prompt: Baseline vs. AST-Guided)
+**Design:** 2 (Claude vs. GPT Model Types) x 2 (Baseline vs. AST-Guided Prompt Types)
 
 **Hypotheses:**
 
-- H₁ₐ: Main effect of Model - Claude and GPT differ in vulnerability counts
-- H₁ᵦ: Main effect of Prompt - AST-Guided and Baseline differ in vulnerability counts  
-- H₁꜀: Interaction effect - The effect of prompt type depends on model type
+- H₁ₐ : Effect of Model – The main effect of the two models (Claude and GPT) show a difference in the total count of their vulnerabilities.
+
+- H₁ᵦ : Effect of Prompt – The main effect of the two prompts (AST-Guided and Baseline) are different from each other regarding the total count of vulnerabilities.
+
+- H₁꜀ : Interaction effect – The effect of prompt type varies based upon the type of model.
 
 ```{r anova}
 anova_model <- aov(total_vuln ~ model * prompt_type, data = data)
@@ -390,9 +397,9 @@ effect_sizes <- data.frame(
 knitr::kable(effect_sizes, caption = "Effect Sizes (Eta-Squared)")
 ```
 
-The interaction plot below visualizes how the effect of prompt type differs between models.
+Interaction plot displays how the impact of the prompt type is different for each model.
 
-```{r fig-interaction, fig.cap="Interaction plot showing Model x Prompt Type. Claude shows a steeper decline with AST-Guided prompting compared to GPT, suggesting differential effectiveness."}
+```{r fig-interaction, fig.cap="Claude has a larger decrease in the number of vulnerabilities when using AST-Guided prompts than GPT which indicates that AST-Guided was less effective for GPT"}
 par(mar = c(5, 5, 4, 2))
 
 interaction.plot(data$prompt_type, data$model, data$total_vuln,
@@ -408,13 +415,13 @@ interaction.plot(data$prompt_type, data$model, data$total_vuln,
 grid(col = "gray90")
 ```
 
-**Interpretation:** The interaction plot shows that Claude responds more strongly to AST-Guided prompting than GPT does.
+**Interpretation:** The Interaction Plot indicates that Claude's response to AST-Guided Prompting is greater than GPT's Response to AST-Guided Prompting.
 
 ---
 
 # Analysis 2: Independent Samples t-test
 
-**Research Question:** Does AST-Guided prompting significantly reduce vulnerability counts compared to Baseline prompting?
+**Research Question:** Is there a statistically significant reduction in Vulnerability Counts from Baseline Prompting when using AST-Guided Prompting.
 
 **Hypotheses:**
 
@@ -446,7 +453,7 @@ cat(paste0("\nCohen's d = ", round(cohens_d_result$estimate, 4), " (", cohens_d_
 
 # Analysis 3: Mann-Whitney U Test (Non-parametric)
 
-**Rationale:** Due to normality violations, the Mann-Whitney U test provides a robust non-parametric alternative.
+**Rationale:** The violation of normality assumptions for the data is the reason why the Mann-Whitney U Test is used as a non-parametric alternative to provide a robust test.
 
 **Hypotheses:**
 
@@ -470,9 +477,9 @@ cat(paste0("\nEffect size r = ", round(r_effect, 4), " (",
 
 # Analysis 4: Correlation Analysis
 
-**Research Question:** What are the relationships between different vulnerability detection tools and code characteristics?
+**Research Question:** What are the relationships between various vulnerability detection tools (and) the characteristics of code?
 
-```{r fig-correlation, fig.cap="Correlation heatmap showing relationships between vulnerability metrics. Darker red indicates stronger positive correlations."}
+```{r fig-correlation, fig.cap="Correlation Heatmap of Vulnerability Metrics. The darker red indicates that there is a higher correlation to each other (of) the positive relationship between the two variables."}
 par(mar = c(6, 8, 4, 4))
 
 cor_subset <- cor_matrix[c("vuln_ast", "vuln_bandit", "vuln_semgrep", "total_vuln", "vuln_density"),
@@ -530,7 +537,7 @@ knitr::kable(cor_results, caption = "Key Correlations with Significance Tests")
 
 # Analysis 5: Multiple Regression
 
-**Research Question:** How well do Model, Prompt Type, and Lines of Code predict total vulnerability count?
+**Research Question:** How strong is the predictive ability of Model, Prompt Type, and Lines of Code for total number of vulnerabilities?
 
 **Model:** `total_vuln ~ model + prompt_type + loc + model:prompt_type`
 
@@ -569,18 +576,21 @@ cat(paste0("\n  F(", reg_summary$fstatistic[2], ", ", reg_summary$fstatistic[3],
 
 **Interpretation:**
 
-The full regression model was statistically significant, explaining `r round(reg_summary$r.squared * 100, 1)`% of variance in vulnerability counts. Key findings:
+The full regression model was statistically significant (`r round(reg_summary$r.squared * 100, 1)`)%. Key results from the regression model include:
 
-- **Lines of Code (LOC):** Significant predictor (p < .001). Each additional line of code increases expected vulnerabilities by ~0.014.
-- **Model (GPT vs Claude):** Significant (p = .003). GPT produced approximately 0.60 more vulnerabilities per sample than Claude on average.
-- **Prompt Type (AST-Guided vs Baseline):** Not significant (p = .606). AST-guided prompting did not significantly predict vulnerability count when controlling for other factors.
-- **Interaction (Model × Prompt Type):** Not significant (p = .568). The effect of prompt type did not differ significantly between models in this analysis.
+- **Lines of Code (LOC)**: Significant (p < .001). Each increase in LOC results in an expected increase in the number of vulnerabilities of approximately 0.014.
+
+- **Model (GPT vs Claude)**: Significant (p = .003). On average, GPT had approximately 0.60 more vulnerabilities per sample than Claude.
+
+- **Prompt Type (AST-Guided vs Baseline)**: Non-significant (p = .606). AST-Guided prompting was not a statistically significant predictor of the number of vulnerabilities, after accounting for other variables.
+
+- **Interaction (Model × Prompt Type)**: Non-significant (p = .568). There was no statistical difference in how prompt types affected the number of vulnerabilities based on the models used.
 
 ---
 
 # Vulnerability Density Analysis
 
-Vulnerability density normalizes vulnerability counts by lines of code, providing a fair comparison across samples of different lengths.
+Vulnerability Density allows for a fair comparison among samples that have varying sizes, by normalizing the number of vulnerabilities per sample to the total number of lines of code in each sample.
 
 **Formula:** Vulnerability Density = (Total Vulnerabilities / Lines of Code) × 1000
 
@@ -627,7 +637,7 @@ cat(paste0("\nCohen's d = ", round(density_d$estimate, 4), " (", density_d$magni
 
 # Summary of Findings
 
-```{r fig-reduction, fig.cap="Percent reduction in vulnerability count achieved by AST-Guided prompting compared to Baseline."}
+```{r fig-reduction, fig.cap="Percentage decrease in the number of identified vulnerabilities due to AST-Guided prompting compared to Baseline."}
 par(mar = c(5, 8, 4, 2))
 
 reductions <- c(
@@ -696,4 +706,4 @@ knitr::kable(summary_table, caption = "Summary of Statistical Analyses",
    - AST-Guided: `r round(mean(ast_density), 2)` vulns/KLOC
    - Baseline: `r round(mean(baseline_density), 2)` vulns/KLOC
 
-4. **Detection Tool Agreement:** All three tools show positive intercorrelations, supporting the validity of the multi-tool approach
+4. **Detection Tool Agreement:** Using all three detection tools is supported through their positive correlations with each other
