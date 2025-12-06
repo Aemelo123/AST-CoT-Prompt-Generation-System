@@ -117,7 +117,7 @@ cor_matrix <- cor(cor_vars, use = "complete.obs")
 
 # Overview
 
-This report presents the statistical analysis of **Run 2** of the experiment comparing **AST-Guided Chain-of-Thought (CoT) prompting** versus **Baseline prompting** for secure code generation. The study examines vulnerability counts across two large language models (Claude and GPT) using three detection tools (AST Parser, Bandit, and Semgrep).
+This report presents the statistical analysis of the experiment comparing **AST-Guided Chain-of-Thought (CoT) prompting** versus **Baseline prompting** for secure code generation. The study examines vulnerability counts across two large language models (Claude and GPT) using three detection tools (AST Parser, Bandit, and Semgrep).
 
 **Research Design:** 2 × 2 Factorial Design
 
@@ -697,6 +697,3 @@ knitr::kable(summary_table, caption = "Summary of Statistical Analyses",
    - Baseline: `r round(mean(baseline_density), 2)` vulns/KLOC
 
 4. **Detection Tool Agreement:** All three tools show positive intercorrelations, supporting the validity of the multi-tool approach
-
-
-*Report generated using R version `r R.version.string`*
